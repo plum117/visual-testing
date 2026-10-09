@@ -106,7 +106,16 @@ export async function getMobileFullPageNativeWebScreenshotsData(browserInstance:
         }
 
         // Take the screenshot and determine if it's rotated
+        // DEBUG-FP (temporary)
+        const debugBefore = process.env.DEBUG_FP ? await browserInstance.execute(() => ({ top: window.pageYOffset || document.documentElement.scrollTop, h: document.documentElement.scrollHeight, fonts: document.fonts.status, imgs: [...document.images].filter(i => !i.complete).length })) : undefined
         const screenshot = await takeBase64Screenshot(browserInstance)
+        if (process.env.DEBUG_FP) {
+            const debugAfter = await browserInstance.execute(() => ({ top: window.pageYOffset || document.documentElement.scrollTop, h: document.documentElement.scrollHeight }))
+            const { mkdirSync, writeFileSync, appendFileSync } = await import('node:fs')
+            mkdirSync(process.env.DEBUG_FP, { recursive: true })
+            writeFileSync(`${process.env.DEBUG_FP}/shot-${i}.png`, Buffer.from(screenshot, 'base64'))
+            appendFileSync(`${process.env.DEBUG_FP}/log.jsonl`, JSON.stringify({ i, scrollY, effectiveViewportHeight, before: debugBefore, after: debugAfter }) + '\n')
+        }
         isRotated = Boolean(isLandscape && effectiveViewportHeight > viewportWidth)
 
         // Determine scroll height and check if we need to scroll again

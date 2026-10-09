@@ -4,6 +4,8 @@ name: android emulator
 # also runs for pull requests from forks. It runs only when a change can affect the mobile screenshots.
 # The LambdaTest Android jobs (e2e workflow) stay: they test real cloud devices with committed baselines.
 on:
+  push:
+    branches: [debug/android-fullpage-ci]
   pull_request:
     paths:
       # Dependency updates (for example webdriverio, @wdio/*, Appium-related packages) can change the screenshots
@@ -88,6 +90,13 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: true
           script: bash .github/scripts/android-emulator-e2e.sh
+
+      - name: 📤 Upload the full page debug data
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: fullpage-debug
+          path: fpdbg/
 
       - name: 📤 Upload artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
