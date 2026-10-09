@@ -36,12 +36,18 @@ jobs:
   android-emulator-web:
     name: 🤖 Run the Android mobile web e2e tests on an emulator
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        warmup: [false, true]
+        rep: [1, 2, 3]
     # Without a limit, a hung job runs until the GitHub default of 6 hours
     timeout-minutes: 45
     env:
       # Used by tests/configs/wdio.local.android.emus.web.conf.ts
       ANDROID_AVD: ci_android_35
       ANDROID_PLATFORM_VERSION: "15"
+      WARMUP: ${{ matrix.warmup }}
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -95,14 +101,14 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: fullpage-debug
+          name: fullpage-debug-warmup-${{ matrix.warmup }}-${{ matrix.rep }}
           path: fpdbg/
 
       - name: 📤 Upload artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: failure()
         with:
-          name: android-emulator-logs
+          name: android-emulator-logs-${{ matrix.warmup }}-${{ matrix.rep }}
           include-hidden-files: true
           path: |
             logs/
