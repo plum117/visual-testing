@@ -4,6 +4,8 @@ name: ios simulator
 # also runs for pull requests from forks. It runs only when a change can affect the mobile screenshots.
 # The LambdaTest iOS jobs (e2e workflow) stay: they test cloud devices with committed baselines.
 on:
+  push:
+    branches: [debug/ios-ci-with-hide-fix]
   pull_request:
     paths:
       # Dependency updates (for example webdriverio, @wdio/*, Appium-related packages) can change the screenshots
