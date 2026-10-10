@@ -21,6 +21,7 @@ v11 is in prerelease on `main` (npm tag `next`). This guide lists what changes w
 | [Ignored regions](#ignored-regions) | Only if a check fails after the upgrade |
 | [OCR: tesseract.js 7](#ocr-tesseractjs-7) | No |
 | [Visual reporter](#visual-reporter) | No |
+| [New: full page screenshots of apps where a container scrolls](#new-full-page-screenshots-of-apps-where-a-container-scrolls) | No, a new option |
 | [Smaller fixes](#smaller-fixes) | No |
 
 ## WebdriverIO v10 only
@@ -100,6 +101,24 @@ No change is needed.
 - **Browser support of the report did not change:** Chrome 87+, Edge 88+, Firefox 78+, Safari 14+, the same
   browsers as Vite 5 built for. Vite 8 has a newer default target, so the reporter sets this list itself.
 - The CLI wizards use `@inquirer/prompts` 8 and `ora` 9; they work the same.
+
+## New: full page screenshots of apps where a container scrolls
+
+In many apps the page itself does not scroll: a container scrolls (for example a `main` element under a fixed
+header). Before, a full page screenshot of such an app was only the viewport (WebDriver BiDi), or the top of the
+page again and again (scroll and stitch). The new `scrollContainer` option gives the element that scrolls:
+
+```ts
+await expect(browser).toMatchFullPageSnapshot('app', {
+    scrollContainer: await $('main'),
+})
+```
+
+The image is the viewport with this container expanded: the part above the container, the full content of the
+container, and the part below it. The container is scrolled back to its start position after the screenshot. With
+this option, the screenshot scrolls and stitches, also in a WebDriver BiDi session. It works for
+`checkFullPageScreen()`, `saveFullPageScreen()` and `toMatchFullPageSnapshot()`, on desktop and on Android and iOS
+mobile web. Columns next to the container (for example a sidebar) are only in the image for the first viewport.
 
 ## Smaller fixes
 
