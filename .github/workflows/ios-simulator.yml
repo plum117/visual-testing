@@ -22,6 +22,9 @@ on:
       - ".github/scripts/ios-simulator-e2e.sh"
       - ".github/workflows/ios-simulator.yml"
   workflow_dispatch:
+  # DEBUG (fork only): timing experiment
+  push:
+    branches: [debug/ios-ci-timing]
 
 permissions:
   contents: read
@@ -34,11 +37,16 @@ jobs:
   ios-simulator-web:
     name: 🍏 Run the iOS mobile web e2e tests on a simulator
     runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [control, prebuilt-a, prebuilt-b, openurl-a, openurl-b]
     # Without a limit, a hung job runs until the GitHub default of 6 hours
     timeout-minutes: 60
     env:
       # A new simulator of this type is created with the newest iOS runtime of the default Xcode
       SIMULATOR_DEVICE_TYPE: iPhone 17 Pro
+      VARIANT: ${{ matrix.variant }}
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -70,9 +78,9 @@ jobs:
 
       - name: 📤 Upload artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: failure()
+        if: always()
         with:
-          name: ios-simulator-logs
+          name: ios-simulator-logs-${{ matrix.variant }}
           include-hidden-files: true
           path: |
             logs/

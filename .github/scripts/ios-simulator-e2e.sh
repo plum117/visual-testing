@@ -19,7 +19,7 @@ mkdir -p logs
 # When the download fails, build WebDriverAgent as before.
 WDA_DIR="${RUNNER_TEMP:-/tmp}/wda-sim"
 rm -rf "$WDA_DIR"
-if appium driver run xcuitest download-wda -- --kind=sim --platform=iOS --outdir="$WDA_DIR" > logs/download-wda.log 2>&1 \
+if [ "${VARIANT:-}" != control ] && appium driver run xcuitest download-wda -- --kind=sim --platform=iOS --outdir="$WDA_DIR" > logs/download-wda.log 2>&1 \
     && [ -d "$WDA_DIR/WebDriverAgentRunner-Runner.app" ]; then
     export IOS_PREBUILT_WDA="$WDA_DIR/WebDriverAgentRunner-Runner.app"
     echo "Prebuilt WebDriverAgent: $IOS_PREBUILT_WDA"
@@ -28,7 +28,9 @@ else
     echo "::warning::The prebuilt WebDriverAgent could not be downloaded, so it is built"
 fi
 
+timing "boot wait start"
 xcrun simctl bootstatus "$UDID" -b > /dev/null
+timing "boot wait end"
 
 if [ -z "${IOS_PREBUILT_WDA:-}" ]; then
     # Build WebDriverAgent before the first session: inside a session, Appium waits only 60 s for it, and the build
@@ -39,7 +41,7 @@ if [ -z "${IOS_PREBUILT_WDA:-}" ]; then
 fi
 
 # Its output goes to a file (uploaded when the job fails), not to the job log
-appium --port 4723 > logs/appium.log 2>&1 &
+appium --port 4723 --log-timestamp > logs/appium.log 2>&1 &
 APPIUM_PID=$!
 
 cleanup() {
@@ -56,15 +58,30 @@ curl -sf http://127.0.0.1:4723/status > /dev/null || { echo "Appium did not star
 
 # Warm-up: Safari shows a first-start tip, and iOS shows a first-boot notification that can be in the screenshots.
 # Its result and files are not kept.
+timing() { echo "TIMING $(date -u +%H:%M:%S) $*"; }
+timing "warm-up start ($VARIANT)"
 echo "::group::Warm up the simulator"
-BASELINE_SETUP=true pnpm test.local.sims.web --mochaOpts.grep "full page screenshot successful" || true
-rm -rf tests/localBaseline .tmp
+case "${VARIANT:-}" in
+    openurl-*)
+        xcrun simctl openurl "$UDID" "https://guinea-pig.webdriver.io/image-compare.html"
+        sleep 60
+        xcrun simctl io "$UDID" screenshot logs/after-openurl.png || true
+        ;;
+    *)
+        BASELINE_SETUP=true pnpm test.local.sims.web --mochaOpts.grep "full page screenshot successful" || true
+        rm -rf tests/localBaseline .tmp
+        ;;
+esac
 echo "::endgroup::"
+timing "warm-up end"
 
+timing "setup start"
 echo "::group::Save the baselines"
 BASELINE_SETUP=true pnpm test.local.sims.web
 echo "::endgroup::"
 
+timing "compare start"
 echo "::group::Compare with the baselines"
 pnpm test.local.sims.web
 echo "::endgroup::"
+timing "end"
