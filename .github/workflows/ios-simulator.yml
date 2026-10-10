@@ -22,6 +22,9 @@ on:
       - ".github/scripts/ios-simulator-e2e.sh"
       - ".github/workflows/ios-simulator.yml"
   workflow_dispatch:
+  # DEBUG (fork only): booted-device cache experiment
+  push:
+    branches: [debug/ios-sim-cache]
 
 permissions:
   contents: read
@@ -31,14 +34,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ios-simulator-web:
-    name: 🍏 Run the iOS mobile web e2e tests on a simulator
+  seed:
+    name: 🌱 Seed the simulator cache (${{ matrix.variant }})
     runs-on: macos-26
-    # Without a limit, a hung job runs until the GitHub default of 6 hours
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [boot, warm]
     env:
-      # A new simulator of this type is created with the newest iOS runtime of the default Xcode
       SIMULATOR_DEVICE_TYPE: iPhone 17 Pro
+      SIM_MODE: seed-${{ matrix.variant }}
     steps:
       - name: ⬇️ Checkout Repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -65,14 +71,87 @@ jobs:
           npm install --global appium@3.8.0
           appium driver install xcuitest@12.16.0
 
+      - name: 🍏 Boot and save the simulator
+        run: bash .github/scripts/ios-simulator-e2e.sh
+
+      - name: 💾 Save the simulator cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/sim-cache
+          key: ios-sim-${{ matrix.variant }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: 📤 Upload artifacts
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: ios-simulator-logs-${{ matrix.variant }}
+          include-hidden-files: true
+          path: |
+            logs/
+            .tmp/
+            tests/localBaseline/
+
+  ios-simulator-web:
+    name: 🍏 Run the iOS mobile web e2e tests on a simulator (${{ matrix.variant }})
+    needs: seed
+    runs-on: macos-26
+    # Without a limit, a hung job runs until the GitHub default of 6 hours
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: control-a, mode: control, cache: none }
+          - { variant: boot-a, mode: cached-boot, cache: boot }
+          - { variant: boot-b, mode: cached-boot, cache: boot }
+          - { variant: warm-a, mode: cached-warm, cache: warm }
+          - { variant: warm-b, mode: cached-warm, cache: warm }
+    env:
+      # A new simulator of this type is created with the newest iOS runtime of the default Xcode
+      SIMULATOR_DEVICE_TYPE: iPhone 17 Pro
+      SIM_MODE: ${{ matrix.mode }}
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+
+      - name: 🧩 Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🏗️ Build
+        run: pnpm build
+
+      - name: 📱 Install Appium and the XCUITest driver
+        run: |
+          npm install --global appium@3.8.0
+          appium driver install xcuitest@12.16.0
+
+      - name: 📥 Restore the simulator cache
+        if: matrix.cache != 'none'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/sim-cache
+          key: ios-sim-${{ matrix.cache }}-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+
       - name: 🍏 Run the e2e tests on the iOS simulator
         run: bash .github/scripts/ios-simulator-e2e.sh
 
       - name: 📤 Upload artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: failure()
+        if: always()
         with:
-          name: ios-simulator-logs
+          name: ios-simulator-logs-${{ matrix.variant }}
           include-hidden-files: true
           path: |
             logs/
