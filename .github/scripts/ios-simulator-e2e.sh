@@ -2,6 +2,7 @@
 # Runs the iOS mobile web e2e tests on a new simulator in the macOS runner.
 # The baselines are not in git: the setup run saves them, the compare run compares with them.
 set -euo pipefail
+timing() { echo "TIMING $(date -u +%H:%M:%S) $*"; }
 
 # A new simulator of the newest iOS runtime of the selected Xcode
 RUNTIME=$(xcrun simctl list runtimes --json | jq -r '[.runtimes[] | select(.platform == "iOS" and .isAvailable)] | sort_by(.version | split(".") | map(tonumber)) | last | .identifier')
@@ -58,7 +59,6 @@ curl -sf http://127.0.0.1:4723/status > /dev/null || { echo "Appium did not star
 
 # Warm-up: Safari shows a first-start tip, and iOS shows a first-boot notification that can be in the screenshots.
 # Its result and files are not kept.
-timing() { echo "TIMING $(date -u +%H:%M:%S) $*"; }
 timing "warm-up start ($VARIANT)"
 echo "::group::Warm up the simulator"
 case "${VARIANT:-}" in
