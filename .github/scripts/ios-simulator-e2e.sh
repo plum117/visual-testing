@@ -20,7 +20,7 @@ mkdir -p logs
 # When the download fails, build WebDriverAgent as before.
 WDA_DIR="${RUNNER_TEMP:-/tmp}/wda-sim"
 rm -rf "$WDA_DIR"
-if [ "${VARIANT:-}" != control ] && appium driver run xcuitest download-wda -- --kind=sim --platform=iOS --outdir="$WDA_DIR" > logs/download-wda.log 2>&1 \
+if [[ "${VARIANT:-}" != control* ]] && appium driver run xcuitest download-wda -- --kind=sim --platform=iOS --outdir="$WDA_DIR" > logs/download-wda.log 2>&1 \
     && [ -d "$WDA_DIR/WebDriverAgentRunner-Runner.app" ]; then
     export IOS_PREBUILT_WDA="$WDA_DIR/WebDriverAgentRunner-Runner.app"
     echo "Prebuilt WebDriverAgent: $IOS_PREBUILT_WDA"

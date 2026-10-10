@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [control, prebuilt-a, prebuilt-b, openurl-a, openurl-b]
+        variant: [control-a, control-b, prebuilt-a, prebuilt-b, prebuilt-c]
     # Without a limit, a hung job runs until the GitHub default of 6 hours
     timeout-minutes: 60
     env:
